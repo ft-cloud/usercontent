@@ -42,7 +42,21 @@ app.get("/api/v1/usercontent/profilePicture",(req,res)=>{
             res.sendFile("/src/defaultAvatar.jpg")
         }
     }else{
-        res.json({"error":"No user uuid given","errorcode":"001"});
+
+        session.transformSecurelySessionToUserUUID(res,req).then(uuid => {
+            if(uuid!=null) {
+                try {
+                    if(fs.existsSync("/usercontentdata/" + uuid.toString() + ".jpg")) {
+                        res.sendFile("/usercontentdata/" + uuid.toString() + ".jpg")
+                    }else{
+                        res.sendFile("/src/defaultAvatar.jpg")
+                    }
+                }catch (e) {
+                    res.sendFile("/src/defaultAvatar.jpg")
+                }
+            }
+        })
+
 
     }
 
@@ -59,27 +73,25 @@ app.post("/api/v1/usercontent/profilePicture",(req,res)=>{
                 res.json({"error":"No file given","errorcode":"001"});
             }else{
                 let avatar = req.files.profilePicture;
-                if(avatar.mimetype==="image/jpeg") {
-
-                }else{
+                if(!avatar.mimetype==="image/jpeg") {
                     res.json({"error":"Invalid File Type","errorcode":"001"});
+                }else{
+                    avatar.mv('/usercontentdata/'+uuid+'.jpg')
 
+                    res.json({
+                        status: true,
+                        message: 'File is uploaded',
+                        data: {
+                            name: avatar.name,
+                            mimetype: avatar.mimetype,
+                            size: avatar.size
+                        }
+                    });
                 }
 
-                avatar.mv('/usercontentdata/'+uuid+'.jpg')
 
-                res.json({
-                    status: true,
-                    message: 'File is uploaded',
-                    data: {
-                        name: avatar.name,
-                        mimetype: avatar.mimetype,
-                        size: avatar.size
-                    }
-                });
 
             }
-
         }
 
     })
