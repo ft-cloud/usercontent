@@ -2,7 +2,7 @@ const path = require("path");
 const fileStructureHandler = {
     folderStructureExists: function (path, userUUID) {
         return new Promise((resolve) => {
-            this.getFileStructure(userUUID).then(fileStructure => {
+            this.getFileStructureRoot(userUUID).then(fileStructure => {
                 let currentFileStructure; //current sub folder from database where we start to iterate
                 let lastFolder = fileStructure; //last found folder in database
                 if (fileStructure != null) { //when we dont receive folder structure from database
@@ -42,7 +42,7 @@ const fileStructureHandler = {
 
     },
 
-    getFileStructure: function (userUUID) {
+    getFileStructureRoot: function (userUUID) {
         return new Promise((resolve) => {
             const accountCollection = global.database.collection("account");
 
@@ -56,6 +56,30 @@ const fileStructureHandler = {
             });
         });
     },
+
+    getFileStructure: function (userUUID, startPath) {
+        return new Promise((resolve) => {
+
+            let projection = {}//{fileCloud: {}};
+            for(let i=0;i<startPath;i++) {
+
+
+                //TODO
+            }
+
+            const accountCollection = global.database.collection("account");
+
+            accountCollection.findOne({uuid: userUUID}).then(result => {
+                if (result.fileCloud != null && result.fileCloud.files != null) {
+                    resolve(result.fileCloud);
+                } else {
+                    resolve(undefined);
+                }
+
+            });
+        });
+    },
+
 
     parsePath: function (path) {
         const pathsArray = [];
@@ -98,6 +122,10 @@ const fileStructureHandler = {
       }))
     },
 
+
+
+
+
     /**
      * file:
      *   {
@@ -107,16 +135,89 @@ const fileStructureHandler = {
             "fileSize": 7423734,
             "name": "tree.jpeg"
             }
+
+        folder:
+     {
+
+     "isFolder": true,
+     "name": "images",
+     "files": [] (you can provide in this file array files if the user has uploaded a complete directory)
+
+     }
      * @param path please check if folder exists
-     * @param file
+     * @param fileStructureEntry
      * @param userUUID the user you want to add the file
      */
-    pushFile(path,file,userUUID) {
-        const accountCollection = global.database.collection("account");
-        //https://docs.mongodb.com/manual/reference/operator/update/positional-filtered/#mongodb-update-up.---identifier--
-       // { arrayFilters: [ { "t.type": "quiz" } , { "score": { $gte: 8 } } ], multi: true}
+    pushFileStructureEntry(path, fileStructureEntry, userUUID) {
+
+        return new Promise(resolve => {
+            const accountCollection = global.database.collection("account");
+            let depth = ""
+            const filters = [];
+            for(let i=0;i<path.length;i++) {
+
+                depth+=`.files.$[depth${i}]`
+                const tempObj = {};
+                tempObj[`depth${i}.name`] = path[i];
+                filters.push(tempObj);
+            }
+            let object = {};
+            object[`fileCloud${depth}.files`] = fileStructureEntry
+
+            console.log(object);
+            console.log(filters);
+            accountCollection.updateOne({uuid:userUUID},{$push: object},{arrayFilters: filters}).then(()=>{
+                resolve();
+            });
+            //https://docs.mongodb.com/manual/reference/operator/update/positional-filtered/#mongodb-update-up.---identifier--
+
+        })
+
+
+    },
+
+
+    removeFileStructureEntry(path, resourceName, userUUID) {
+
+        return new Promise(resolve => {
+
+            this.folderStructureExists(path,userUUID).then(foundFolder=>{
+                if(foundFolder.result===false) {
+                    resolve({result:false})
+                }else{
+                    const accountCollection = global.database.collection("account");
+                    let depth = ""
+                    const filters = [];
+                    for(let i=0;i<path.length;i++) {
+                        depth+=`.files.$[depth${i}]`
+                        const tempObj = {};
+                        tempObj[`depth${i}.name`] = path[i];
+                        filters.push(tempObj);
+                    }
+                    let object = {};
+                    object[`fileCloud${depth}.files`] = {name:resourceName}
+
+                    let deleteObject = foundFolder.foundFolder.files.filter(obj=>{
+                        return obj.name === resourceName;
+                    })[0];
+                    if(deleteObject===undefined) {
+                        deleteObject = {success:false}
+                    }
+
+                    accountCollection.updateOne({uuid:userUUID},{$pull: object},{arrayFilters: filters}).then((result)=>{
+                        resolve(deleteObject);
+                    });
+                }
+            })
+
+
+            //https://docs.mongodb.com/manual/reference/operator/update/positional-filtered/#mongodb-update-up.---identifier--
+
+        })
+
 
     }
+
 };
 
 module.exports = fileStructureHandler;

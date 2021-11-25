@@ -72,7 +72,7 @@ module.exports.init = function initHandler() {
         })
     })
 
-    app.post("/api/v1/usercontent/cloudUpload",(req,res)=>{
+    app.put("/api/v1/usercontent/cloud/resource",(req,res)=>{
         if(req.body.absolutePath!=null) {
             // e.g. /photos/media/2020/05/02/
 
@@ -90,8 +90,69 @@ module.exports.init = function initHandler() {
                 if (uuid != null) {
                     fileStructureHandler.folderStructureExists( fileStructureHandler.parsePath(req.body.absolutePath.toString()),uuid).then(temp=>{
                         console.log(temp);
+
+                        fileStructureHandler.pushFileStructureEntry(fileStructureHandler.parsePath(req.body.absolutePath.toString()),{
+                            "isFolder": false,
+                            "mimeType": "image/jpeg",
+                            "fileUUID": "a838584-742747-345835h-sh475ng45",
+                            "fileSize": 7423734,
+                            "name": "testupload.jpeg"
+                        },uuid).then(()=>{
+                            console.log("done");
+                        })
+
                     })
-                    fileStructureHandler.pushFile()
+
+
+
+                    if (!req.files || !req.files.file) {
+                        res.json({"error": "No file given", "errorcode": "001"});
+                    } else {
+                        let file = req.files.file;
+                        const fileUUID = uuidGen.v4();
+                        file.mv(`/usercontentdata/cloud/${uuid}/${fileUUID}`)
+
+                        res.json({
+                            status: true,
+                            message: 'File has been uploaded uploaded',
+                            data: {
+                                name: file.name,
+                                mimetype: file.mimetype,
+                                size: file.size
+                            }
+                        });
+
+
+                    }
+                }
+
+            })
+        }
+    })
+
+
+    app.delete("/api/v1/usercontent/cloud/resource",(req,res)=>{
+        if(req.body.absolutePath!=null&&req.body.resourceName!=null) {
+            // e.g. /photos/media/2020/05/02/
+
+
+            const regex = /\/[a-zA-Z0-9_\/-]*[^\/]$/;
+            if(!regex.test(req.body.absolutePath.toString())) {
+                res.status(400).json({"error": "No valid path", "errorcode": "001"});
+                return;
+            }
+
+            session.transformSecurelySessionToUserUUID(res, req).then(uuid => {
+
+                if (uuid != null) {
+                    fileStructureHandler.folderStructureExists( fileStructureHandler.parsePath(req.body.absolutePath.toString()),uuid).then(temp=>{
+                       // console.log(temp);
+
+                        fileStructureHandler.removeFileStructureEntry(fileStructureHandler.parsePath(req.body.absolutePath.toString()),req.body.resourceName.toString(),uuid).then((result)=>{
+                            console.log(result);
+                        })
+
+                    })
 
 
 
