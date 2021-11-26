@@ -1,4 +1,6 @@
 const path = require("path");
+const fs = require('fs')
+
 const fileStructureHandler = {
     folderStructureExists: function (path, userUUID) {
         return new Promise((resolve) => {
@@ -90,13 +92,13 @@ const fileStructureHandler = {
         });
         return pathsArray;
     },
+    composePath: function (path) {
+        return "/"+path.join('/');
+    },
 
-    fileExists(pathToFile,userUUID) {
+    fileExists(pathWithoutFile,fileName,userUUID) {
 
       return new Promise((resolve => {
-
-          let pathWithoutFile = [...pathToFile]
-          const file = pathWithoutFile.pop();
 
           this.folderStructureExists(pathWithoutFile,userUUID).then((folder)=>{
 
@@ -104,7 +106,7 @@ const fileStructureHandler = {
                 if(folder.foundFolder.files!=null) {
 
                     folder.foundFolder.files.forEach(folderFile=>{
-                        if(folderFile.name===file) {
+                        if(folderFile.name===fileName) {
                             resolve({result: true,file:folderFile})
                         }
                     })
@@ -126,14 +128,15 @@ const fileStructureHandler = {
 
 
 
-    /**
+    /** e.g.
      * file:
      *   {
             "isFolder": false,
             "mimeType": "image/jpeg",
             "fileUUID": "a838584-742747-345835h-sh475ng45",
             "fileSize": 7423734,
-            "name": "tree.jpeg"
+            "name": "tree.jpeg",
+            "checksum": "ad3d94d103062d674d6dc738556c4c8e"
             }
 
         folder:
@@ -169,7 +172,6 @@ const fileStructureHandler = {
             accountCollection.updateOne({uuid:userUUID},{$push: object},{arrayFilters: filters}).then(()=>{
                 resolve();
             });
-            //https://docs.mongodb.com/manual/reference/operator/update/positional-filtered/#mongodb-update-up.---identifier--
 
         })
 
@@ -211,11 +213,48 @@ const fileStructureHandler = {
             })
 
 
-            //https://docs.mongodb.com/manual/reference/operator/update/positional-filtered/#mongodb-update-up.---identifier--
 
         })
 
 
+    },
+
+    changeUsedBytes: function (delta,userUUID) {
+        return new Promise(resolve => {
+
+            const accountCollection = global.database.collection("account");
+            accountCollection.updateOne({uuid:userUUID},{$inc:{"fileCloud.usedBytes": delta}}).then(()=>{
+                resolve();
+            })
+
+        })
+    },
+
+    deleteRecursive: async function (folder, userUUID) {
+        let savedBytes = 0;
+
+        for (const file of folder.files) {
+
+            if (file.isFolder === true) {
+                savedBytes += await this.deleteRecursive(file, userUUID);
+            } else {
+                await this.deleteFilesFromDisk(userUUID, file.fileUUID)
+                savedBytes += file.fileSize
+            }
+        }
+
+        return savedBytes;
+
+
+    },
+
+    deleteFilesFromDisk: function (userUUID,fileUUID) {
+        return new Promise(async resolve => {
+
+            fs.rmSync("/usercontentdata/cloud/"+userUUID+"/"+fileUUID)
+            resolve();
+
+        })
     }
 
 };

@@ -4,6 +4,8 @@ const uuidGen = require('uuid');
 const fs = require('fs')
 const fileUpload = require('express-fileupload');
 module.exports.app = app;
+const cookieParser = require('cookie-parser')
+
 
 const cors = require('cors');
 const { MongoClient } = require("mongodb");
@@ -19,6 +21,7 @@ const userContentHandler = require('./userContentHandler');
 
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
+app.use(cookieParser())
 
 app.use(fileUpload({
     createParentPath: true,
@@ -45,6 +48,7 @@ app.use(function (err,req,res,next){
     if (res.headersSent) {
         return next(err);
     }
+    console.error(err);
     res.status(500);
     res.send('Something went wrong')
 })

@@ -1,31 +1,34 @@
 const app = require("./userContentServer").app;
 const fs = require('fs')
+const uuidGen = require('uuid');
+
 const session = require('sessionlib/session.js')
 const fileStructureHandler = require("./fileStructureHandler");
+const fileViewLinkHandler = require("./fileViewLinkHandler");
 module.exports.init = function initHandler() {
 
-    app.get("/api/v1/usercontent/profilePicture",(req,res)=>{
-        if(req.query.user!=null) {
+    app.get("/api/v1/usercontent/profilePicture", (req, res) => {
+        if (req.query.user != null) {
             try {
-                if(fs.existsSync("/usercontentdata/userProfile/" + req.query.user.toString() + ".jpg")) {
+                if (fs.existsSync("/usercontentdata/userProfile/" + req.query.user.toString() + ".jpg")) {
                     res.sendFile("/usercontentdata/userProfile/" + req.query.user.toString() + ".jpg")
-                }else{
+                } else {
                     res.sendFile("/src/defaultAvatar.jpg")
                 }
-            }catch (e) {
+            } catch (e) {
                 res.sendFile("/src/defaultAvatar.jpg")
             }
-        }else{
+        } else {
 
-            session.transformSecurelySessionToUserUUID(res,req).then(uuid => {
-                if(uuid!=null) {
+            session.transformSecurelySessionToUserUUID(res, req).then(uuid => {
+                if (uuid != null) {
                     try {
-                        if(fs.existsSync("/usercontentdata/userProfile/" + uuid.toString() + ".jpg")) {
+                        if (fs.existsSync("/usercontentdata/userProfile/" + uuid.toString() + ".jpg")) {
                             res.sendFile("/usercontentdata/userProfile/" + uuid.toString() + ".jpg")
-                        }else{
+                        } else {
                             res.sendFile("/src/defaultAvatar.jpg")
                         }
-                    }catch (e) {
+                    } catch (e) {
                         res.sendFile("/src/defaultAvatar.jpg")
                     }
                 }
@@ -38,20 +41,19 @@ module.exports.init = function initHandler() {
     })
 
 
-    app.post("/api/v1/usercontent/profilePicture",(req,res)=>{
-        console.log(req.body)
-        session.transformSecurelySessionToUserUUID(res,req).then(uuid=>{
+    app.post("/api/v1/usercontent/profilePicture", (req, res) => {
+        session.transformSecurelySessionToUserUUID(res, req).then(uuid => {
 
-            if(uuid!=null) {
+            if (uuid != null) {
 
-                if(!req.files||!req.files.profilePicture) {
-                    res.json({"error":"No file given","errorcode":"001"});
-                }else{
+                if (!req.files || !req.files.profilePicture) {
+                    res.json({"error": "No file given", "errorcode": "001"});
+                } else {
                     let avatar = req.files.profilePicture;
-                    if(!avatar.mimetype==="image/jpeg") {
-                        res.json({"error":"Invalid File Type","errorcode":"001"});
-                    }else{
-                        avatar.mv('/usercontentdata/userProfile/'+uuid+'.jpg')
+                    if (!avatar.mimetype === "image/jpeg") {
+                        res.json({"error": "Invalid File Type", "errorcode": "001"});
+                    } else {
+                        avatar.mv('/usercontentdata/userProfile/' + uuid + '.jpg')
 
                         res.json({
                             status: true,
@@ -65,22 +67,22 @@ module.exports.init = function initHandler() {
                     }
 
 
-
                 }
             }
 
         })
     })
 
-    app.put("/api/v1/usercontent/cloud/resource",(req,res)=>{
-        if(req.body.absolutePath!=null) {
+
+    //TODO move and copy
+    app.put("/api/v1/usercontent/cloud/resource", (req, res) => {
+        if (req.body.absolutePath != null) {
             // e.g. /photos/media/2020/05/02/
 
 
             const regex = /\/[a-zA-Z0-9_\/-]*[^\/]$/;
-            if(!regex.test(req.body.absolutePath.toString())) {
+            if (!regex.test(req.body.absolutePath.toString())&&!(req.body.absolutePath.toString()==="/")) {
 
-                console.log("test")
                 res.status(400).json({"error": "No valid path", "errorcode": "001"});
                 return;
             }
@@ -88,39 +90,41 @@ module.exports.init = function initHandler() {
             session.transformSecurelySessionToUserUUID(res, req).then(uuid => {
 
                 if (uuid != null) {
-                    fileStructureHandler.folderStructureExists( fileStructureHandler.parsePath(req.body.absolutePath.toString()),uuid).then(temp=>{
-                        console.log(temp);
-
-                        fileStructureHandler.pushFileStructureEntry(fileStructureHandler.parsePath(req.body.absolutePath.toString()),{
-                            "isFolder": false,
-                            "mimeType": "image/jpeg",
-                            "fileUUID": "a838584-742747-345835h-sh475ng45",
-                            "fileSize": 7423734,
-                            "name": "testupload.jpeg"
-                        },uuid).then(()=>{
-                            console.log("done");
-                        })
-
-                    })
-
 
 
                     if (!req.files || !req.files.file) {
                         res.json({"error": "No file given", "errorcode": "001"});
                     } else {
                         let file = req.files.file;
-                        const fileUUID = uuidGen.v4();
-                        file.mv(`/usercontentdata/cloud/${uuid}/${fileUUID}`)
 
-                        res.json({
-                            status: true,
-                            message: 'File has been uploaded uploaded',
-                            data: {
-                                name: file.name,
-                                mimetype: file.mimetype,
-                                size: file.size
-                            }
-                        });
+                        fileStructureHandler.folderStructureExists(fileStructureHandler.parsePath(req.body.absolutePath.toString()), uuid).then(() => {
+                            const fileUUID = uuidGen.v4();
+
+                            fileStructureHandler.pushFileStructureEntry(fileStructureHandler.parsePath(req.body.absolutePath.toString()), {
+                                "isFolder": false,
+                                "mimeType": file.mimetype,
+                                "fileUUID": fileUUID,
+                                "fileSize": file.size,
+                                "name": file.name,
+                                "checksum": file.md5
+                            }, uuid).then(() => {
+                                file.mv(`/usercontentdata/cloud/${uuid}/${fileUUID}`)
+                                fileStructureHandler.changeUsedBytes(file.size,uuid);
+
+                                res.json({
+                                    status: true,
+                                    message: 'File has been uploaded uploaded',
+                                    file: {
+                                        name: file.name,
+                                        mimetype: file.mimetype,
+                                        size: file.size
+                                    }
+                                });
+
+
+                            })
+
+                        })
 
 
                     }
@@ -131,13 +135,13 @@ module.exports.init = function initHandler() {
     })
 
 
-    app.delete("/api/v1/usercontent/cloud/resource",(req,res)=>{
-        if(req.body.absolutePath!=null&&req.body.resourceName!=null) {
+    app.delete("/api/v1/usercontent/cloud/resource", (req, res) => {
+        if (req.body.absolutePath != null && req.body.resourceName != null) {
             // e.g. /photos/media/2020/05/02/
 
 
             const regex = /\/[a-zA-Z0-9_\/-]*[^\/]$/;
-            if(!regex.test(req.body.absolutePath.toString())) {
+            if (!regex.test(req.body.absolutePath.toString())&&!(req.body.absolutePath.toString()==="/")) {
                 res.status(400).json({"error": "No valid path", "errorcode": "001"});
                 return;
             }
@@ -145,39 +149,170 @@ module.exports.init = function initHandler() {
             session.transformSecurelySessionToUserUUID(res, req).then(uuid => {
 
                 if (uuid != null) {
-                    fileStructureHandler.folderStructureExists( fileStructureHandler.parsePath(req.body.absolutePath.toString()),uuid).then(temp=>{
-                       // console.log(temp);
+                    fileStructureHandler.folderStructureExists(fileStructureHandler.parsePath(req.body.absolutePath.toString()), uuid).then(temp => {
+                        // console.log(temp);
 
-                        fileStructureHandler.removeFileStructureEntry(fileStructureHandler.parsePath(req.body.absolutePath.toString()),req.body.resourceName.toString(),uuid).then((result)=>{
+                        fileStructureHandler.removeFileStructureEntry(fileStructureHandler.parsePath(req.body.absolutePath.toString()), req.body.resourceName.toString(), uuid).then((result) => {
                             console.log(result);
+                            if(result!=null) {
+                                if(result.isFolder===true) {
+                                    fileStructureHandler.deleteRecursive(result, uuid).then(savedBytes=>{
+                                        fileStructureHandler.changeUsedBytes(-savedBytes,uuid).then(()=>{
+                                            res.send();
+                                        });
+                                    })
+                                }else{
+                                    fileStructureHandler.deleteFilesFromDisk(uuid,result.fileUUID).then(()=>{
+                                        fileStructureHandler.changeUsedBytes(-result.fileSize,uuid).then(()=>{
+                                            res.send();
+                                        });
+                                    })
+                                }
+                            }
+
+
                         })
 
                     })
 
+                    //TODO delete file and delete this stuff
 
 
-                    if (!req.files || !req.files.file) {
-                        res.json({"error": "No file given", "errorcode": "001"});
-                    } else {
-                        let file = req.files.file;
-                        const fileUUID = uuidGen.v4();
-                        file.mv(`/usercontentdata/cloud/${uuid}/${fileUUID}`)
 
-                        res.json({
-                            status: true,
-                            message: 'File has been uploaded uploaded',
-                            data: {
-                                name: file.name,
-                                mimetype: file.mimetype,
-                                size: file.size
-                            }
-                        });
-
-
-                    }
                 }
 
             })
+        }
+    })
+
+    app.get("/api/v1/usercontent/cloud/folder", (req, res) => {
+        if (req.body.absolutePath != null) {
+            // e.g. /photos/media/2020/05/02/
+
+
+            const regex = /\/[a-zA-Z0-9_\/-]*[^\/]$/;
+            if (!regex.test(req.body.absolutePath.toString())&&!(req.query.absolutePath.toString()==="/")) {
+                res.status(400).json({"error": "No valid path", "errorcode": "001"});
+                return;
+            }
+
+            session.transformSecurelySessionToUserUUID(res, req).then(uuid => {
+
+                if (uuid != null) {
+                    fileStructureHandler.folderStructureExists(fileStructureHandler.parsePath(req.body.absolutePath.toString()), uuid).then(path => {
+                        // console.log(temp);
+                        if (path.foundFolder != null) {
+                            path.foundFolder.files.forEach(file => delete file.files)
+                        }
+                        res.json(path)
+
+                    })
+
+
+                }
+
+            })
+        }
+    })
+
+    app.put("/api/v1/usercontent/cloud/folder", (req, res) => {
+        if (req.body.absolutePath != null && req.body.folderName != null) {
+            // e.g. /photos/media/2020/05/02/
+
+
+            const regex = /\/[a-zA-Z0-9_\/-]*[^\/]$/;
+            if (!regex.test(req.body.absolutePath.toString())&&!(req.body.absolutePath.toString()==="/")) {
+                res.status(400).json({"error": "No valid path", "errorcode": "001"});
+                return;
+            }
+
+            session.transformSecurelySessionToUserUUID(res, req).then(uuid => {
+
+                if (uuid != null) {
+                    fileStructureHandler.folderStructureExists(fileStructureHandler.parsePath(req.body.absolutePath.toString()), uuid).then(folder => {
+                        // console.log(temp);
+                        fileStructureHandler.pushFileStructureEntry(fileStructureHandler.parsePath(req.body.absolutePath.toString()), {
+                            isFolder: true,
+                            name: req.body.folderName.toString(),
+                            files: []
+                        }, uuid)
+                        res.send();
+
+                    })
+
+
+                }
+
+            })
+        }
+    })
+
+
+    app.get("/api/v1/usercontent/cloud/file", (req, res) => {
+
+        if (req.query.absolutePath != null && req.query.fileName != null) {
+            // e.g. /photos/media/2020/05/02/
+
+
+            const regex = /\/[a-zA-Z0-9_\/-]*[^\/]$/;
+            if (!regex.test(req.query.absolutePath.toString())&&!(req.query.absolutePath.toString()==="/")) {
+                res.status(400).json({"error": "No valid path", "errorcode": "001"});
+                return;
+            }
+
+            session.transformSecurelySessionToUserUUID(res, req).then(uuid => {
+
+                if (uuid != null) {
+                    fileStructureHandler.folderStructureExists(fileStructureHandler.parsePath(req.query.absolutePath.toString()), uuid).then(folder => {
+                        fileStructureHandler.fileExists(fileStructureHandler.parsePath(req.query.absolutePath.toString()), req.query.fileName.toString(), uuid).then(foundFile => {
+
+                            if (foundFile.result === true) {
+
+                                fileViewLinkHandler.generateViewLink(uuid, foundFile.file.fileUUID, foundFile.file).then(link => {
+                                    res.json({success: true, linkUUID: link.linkUUID,mimeType: link.file.mimeType,size: link.file.fileSize})
+                                })
+                            } else {
+                                res.status(404).json({"error": "Resource not found", "errorcode": "015"});
+                            }
+                        })
+                    })
+
+                }
+
+            })
+        }else{
+            res.status(400).json({"error": "Please provide absolutePath and fileName", "errorcode": "001"});
+
+        }
+    })
+
+    app.get("/api/v1/usercontent/cloud/fileViewLink", (req, res) => {
+        if (req.query.link != null) {
+
+            fileViewLinkHandler.getViewLinkContent(req.query.link).then(file => {
+                if(file!=null) {
+
+                //TODO check for checksum
+                if (fs.existsSync("/usercontentdata/cloud/" +  file.user + "/"+ file.fileUUID)) {
+                    res.download("/usercontentdata/cloud/" +  file.user + "/"+ file.fileUUID,file.file.name);
+
+                }else{
+                    res.status(404).json({"error": "Resource not found", "errorcode": "015"});
+
+                }
+
+
+                }else{
+                    res.status(404).json({"error": "Link not found", "errorcode": "015"});
+
+                }
+
+
+            })
+
+        }else{
+            res.status(400).json({"error": "Please provide link", "errorcode": "001"});
+
         }
     })
 
