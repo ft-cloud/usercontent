@@ -8,6 +8,7 @@ const fileStructureHandler = {
                 let currentFileStructure; //current sub folder from database where we start to iterate
                 let lastFolder = fileStructure; //last found folder in database
                 if (fileStructure != null) { //when we dont receive folder structure from database
+                    console.log(typeof path)
                     path.forEach((directory) => { //iterate over every given folder
 
                         let foundFolder = null; //reset found folder variable
@@ -96,7 +97,7 @@ const fileStructureHandler = {
         return "/"+path.join('/');
     },
 
-    fileExists(pathWithoutFile,fileName,userUUID) {
+    resourceExists(pathWithoutFile, resourceName, userUUID) {
 
       return new Promise((resolve => {
 
@@ -105,9 +106,9 @@ const fileStructureHandler = {
               if(folder.result===true) {
                 if(folder.foundFolder.files!=null) {
 
-                    folder.foundFolder.files.forEach(folderFile=>{
-                        if(folderFile.name===fileName) {
-                            resolve({result: true,file:folderFile})
+                    folder.foundFolder.files.forEach(resource=>{
+                        if(resource.name===resourceName) {
+                            resolve({result: true,file:resource})
                         }
                     })
                     resolve({result: false})

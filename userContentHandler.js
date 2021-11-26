@@ -74,7 +74,7 @@ module.exports.init = function initHandler() {
     })
 
 
-    //TODO move and copy
+    //TODO copy files
     app.put("/api/v1/usercontent/cloud/resource", (req, res) => {
         if (req.body.absolutePath != null) {
             // e.g. /photos/media/2020/05/02/
@@ -175,7 +175,6 @@ module.exports.init = function initHandler() {
 
                     })
 
-                    //TODO delete file and delete this stuff
 
 
 
@@ -191,7 +190,7 @@ module.exports.init = function initHandler() {
 
 
             const regex = /\/[a-zA-Z0-9_\/-]*[^\/]$/;
-            if (!regex.test(req.body.absolutePath.toString())&&!(req.query.absolutePath.toString()==="/")) {
+            if (!regex.test(req.query.absolutePath.toString())&&!(req.query.absolutePath.toString()==="/")) {
                 res.status(400).json({"error": "No valid path", "errorcode": "001"});
                 return;
             }
@@ -214,6 +213,9 @@ module.exports.init = function initHandler() {
             })
         }
     })
+
+
+
 
     app.put("/api/v1/usercontent/cloud/folder", (req, res) => {
         if (req.body.absolutePath != null && req.body.folderName != null) {
@@ -264,7 +266,7 @@ module.exports.init = function initHandler() {
 
                 if (uuid != null) {
                     fileStructureHandler.folderStructureExists(fileStructureHandler.parsePath(req.query.absolutePath.toString()), uuid).then(folder => {
-                        fileStructureHandler.fileExists(fileStructureHandler.parsePath(req.query.absolutePath.toString()), req.query.fileName.toString(), uuid).then(foundFile => {
+                        fileStructureHandler.resourceExists(fileStructureHandler.parsePath(req.query.absolutePath.toString()), req.query.fileName.toString(), uuid).then(foundFile => {
 
                             if (foundFile.result === true) {
 
@@ -313,6 +315,51 @@ module.exports.init = function initHandler() {
         }else{
             res.status(400).json({"error": "Please provide link", "errorcode": "001"});
 
+        }
+    })
+
+    app.patch("/api/v1/usercontent/cloud/moveResource", (req, res) => {
+        if (req.body.absoluteSourcePath != null&&req.body.resourceName != null&&req.body.absoluteTargetPath) {
+            // e.g. /photos/media/2020/05/02/
+
+
+            const regex = /\/[a-zA-Z0-9_\/-]*[^\/]$/;
+            if (!regex.test(req.body.absoluteSourcePath.toString())&&!(req.body.absoluteSourcePath.toString()==="/")) {
+                res.status(400).json({"error": "No valid source path", "errorcode": "001"});
+                return;
+            }
+
+            if (!regex.test(req.body.absoluteTargetPath.toString())&&!(req.body.absoluteTargetPath.toString()==="/")) {
+                res.status(400).json({"error": "No valid target path", "errorcode": "001"});
+                return;
+            }
+
+            session.transformSecurelySessionToUserUUID(res, req).then(uuid => {
+
+                if (uuid != null) {
+                    const sourceFileExistPromise =  fileStructureHandler.resourceExists(fileStructureHandler.parsePath(req.body.absoluteSourcePath.toString()),req.body.resourceName.toString(),uuid);
+                    const sourceExistPromise =  fileStructureHandler.folderStructureExists(fileStructureHandler.parsePath(req.body.absoluteSourcePath.toString()), uuid);
+                    const targetExistPromise = fileStructureHandler.folderStructureExists(fileStructureHandler.parsePath(req.body.absoluteTargetPath.toString()), uuid);
+
+                    Promise.all([sourceFileExistPromise,sourceExistPromise,targetExistPromise]).then(result=>{
+                        if(result[0].result===true&&result[1].result===true&&result[2].result===true){
+
+                            fileStructureHandler.removeFileStructureEntry(fileStructureHandler.parsePath(req.body.absoluteSourcePath.toString()),req.body.resourceName.toString(),uuid).then(result=>{
+                                fileStructureHandler.pushFileStructureEntry(fileStructureHandler.parsePath(req.body.absoluteTargetPath.toString()),result,uuid).then(()=>{
+                                    res.send();
+                                })
+                            })
+
+                        }else{
+                            res.status(400).json({"error": "No valid paths", "errorcode": "001"});
+                        }
+                    })
+
+
+
+                }
+
+            })
         }
     })
 
