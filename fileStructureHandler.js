@@ -1,5 +1,6 @@
 const path = require("path");
 const fs = require('fs')
+const uuidGen = require('uuid');
 
 const fileStructureHandler = {
     folderStructureExists: function (path, userUUID) {
@@ -60,28 +61,6 @@ const fileStructureHandler = {
         });
     },
 
-    getFileStructure: function (userUUID, startPath) {
-        return new Promise((resolve) => {
-
-            let projection = {}//{fileCloud: {}};
-            for(let i=0;i<startPath;i++) {
-
-
-                //TODO
-            }
-
-            const accountCollection = global.database.collection("account");
-
-            accountCollection.findOne({uuid: userUUID}).then(result => {
-                if (result.fileCloud != null && result.fileCloud.files != null) {
-                    resolve(result.fileCloud);
-                } else {
-                    resolve(undefined);
-                }
-
-            });
-        });
-    },
 
 
     parsePath: function (path) {
@@ -231,22 +210,44 @@ const fileStructureHandler = {
         })
     },
 
-    deleteRecursive: async function (folder, userUUID) {
+    deleteRecursive: async function (structure, userUUID) {
         let savedBytes = 0;
 
-        for (const file of folder.files) {
+        for (const file of structure.files) {
 
             if (file.isFolder === true) {
                 savedBytes += await this.deleteRecursive(file, userUUID);
             } else {
+
                 await this.deleteFilesFromDisk(userUUID, file.fileUUID)
                 savedBytes += file.fileSize
             }
         }
 
         return savedBytes;
+    },
 
+    copyRecursive: async function (structure, userUUID) {
+        let usedBytes = 0;
 
+        for (let file of structure.files) {
+
+            if (file.isFolder === true) {
+                const result = await this.copyRecursive(file, userUUID);
+                usedBytes+=result.usedBytes;
+                file = result.struct;
+            } else {
+                const newUUID = uuidGen.v4();
+                await this.copyFilesOnDisk(userUUID, file.fileUUID,newUUID)
+                file.fileUUID = newUUID;
+                usedBytes += file.fileSize
+            }
+        }
+
+        return {
+            struct: structure,
+            usedBytes: usedBytes
+        };
     },
 
     deleteFilesFromDisk: function (userUUID,fileUUID) {
@@ -256,8 +257,33 @@ const fileStructureHandler = {
             resolve();
 
         })
-    }
+    },
 
+    copyFilesOnDisk(userUUID, fileUUID, newUUID) {
+        return new Promise(  resolve=>{
+            fs.copyFileSync("/usercontentdata/cloud/"+userUUID+"/"+fileUUID,"/usercontentdata/cloud/"+userUUID+"/"+newUUID)
+            resolve();
+        })
+    },
+
+    checkFileName(name) {
+
+        const invalidCharacters = ['"',"*",":","<",">","?","\\","|","/"]
+
+        let invalid = false;
+        invalidCharacters.forEach(char=>{
+
+           if( name.includes(char)) {
+               invalid=true;
+           }
+
+        })
+        console.log((!invalid)&&(name.length<256))
+
+        return (!invalid)&&(name.length<256);
+
+
+    }
 };
 
 module.exports = fileStructureHandler;

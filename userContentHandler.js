@@ -80,6 +80,7 @@ module.exports.init = function initHandler() {
             // e.g. /photos/media/2020/05/02/
 
 
+
             const regex = /\/[a-zA-Z0-9_\/-]*[^\/]$/;
             if (!regex.test(req.body.absolutePath.toString())&&!(req.body.absolutePath.toString()==="/")) {
 
@@ -139,6 +140,10 @@ module.exports.init = function initHandler() {
         if (req.body.absolutePath != null && req.body.resourceName != null) {
             // e.g. /photos/media/2020/05/02/
 
+            if(!fileStructureHandler.checkFileName(req.body.resourceName.toString())) {
+                res.status(400).json({"error": "No valid name", "errorcode": "001"});
+                return;
+            }
 
             const regex = /\/[a-zA-Z0-9_\/-]*[^\/]$/;
             if (!regex.test(req.body.absolutePath.toString())&&!(req.body.absolutePath.toString()==="/")) {
@@ -221,7 +226,10 @@ module.exports.init = function initHandler() {
         if (req.body.absolutePath != null && req.body.folderName != null) {
             // e.g. /photos/media/2020/05/02/
 
-
+            if(!fileStructureHandler.checkFileName(req.body.folderName.toString())) {
+                res.status(400).json({"error": "No valid name", "errorcode": "001"});
+                return;
+            }
             const regex = /\/[a-zA-Z0-9_\/-]*[^\/]$/;
             if (!regex.test(req.body.absolutePath.toString())&&!(req.body.absolutePath.toString()==="/")) {
                 res.status(400).json({"error": "No valid path", "errorcode": "001"});
@@ -254,7 +262,10 @@ module.exports.init = function initHandler() {
 
         if (req.query.absolutePath != null && req.query.fileName != null) {
             // e.g. /photos/media/2020/05/02/
-
+            if(!fileStructureHandler.checkFileName(req.body.fileName.toString())) {
+                res.status(400).json({"error": "No valid name", "errorcode": "001"});
+                return;
+            }
 
             const regex = /\/[a-zA-Z0-9_\/-]*[^\/]$/;
             if (!regex.test(req.query.absolutePath.toString())&&!(req.query.absolutePath.toString()==="/")) {
@@ -321,6 +332,15 @@ module.exports.init = function initHandler() {
     app.patch("/api/v1/usercontent/cloud/moveResource", (req, res) => {
         if (req.body.absoluteSourcePath != null&&req.body.resourceName != null&&req.body.absoluteTargetPath) {
             // e.g. /photos/media/2020/05/02/
+            if(req.body.absoluteSourcePath===req.body.absoluteTargetPath) {
+                res.send();
+                return;
+            }
+
+            if(!fileStructureHandler.checkFileName(req.body.resourceName.toString())) {
+                res.status(400).json({"error": "No valid name", "errorcode": "001"});
+                return;
+            }
 
 
             const regex = /\/[a-zA-Z0-9_\/-]*[^\/]$/;
@@ -337,29 +357,157 @@ module.exports.init = function initHandler() {
             session.transformSecurelySessionToUserUUID(res, req).then(uuid => {
 
                 if (uuid != null) {
-                    const sourceFileExistPromise =  fileStructureHandler.resourceExists(fileStructureHandler.parsePath(req.body.absoluteSourcePath.toString()),req.body.resourceName.toString(),uuid);
-                    const sourceExistPromise =  fileStructureHandler.folderStructureExists(fileStructureHandler.parsePath(req.body.absoluteSourcePath.toString()), uuid);
-                    const targetExistPromise = fileStructureHandler.folderStructureExists(fileStructureHandler.parsePath(req.body.absoluteTargetPath.toString()), uuid);
+                    //TODO build methode of this
+                    fileStructureHandler.resourceExists(fileStructureHandler.parsePath(req.body.absoluteTargetPath.toString()),req.body.resourceName.toString(),uuid).then(alreadyExist=>{
+                        if(alreadyExist.result===true) {
+                            if(req.body.force) {
+                                if(alreadyExist.file.isFolder===true) {
+                                    fileStructureHandler.deleteRecursive(alreadyExist.file, uuid).then(savedBytes=>{
+                                        fileStructureHandler.changeUsedBytes(-savedBytes,uuid).then(()=>{
+                                            executeMove();
 
-                    Promise.all([sourceFileExistPromise,sourceExistPromise,targetExistPromise]).then(result=>{
-                        if(result[0].result===true&&result[1].result===true&&result[2].result===true){
+                                        });
+                                    })
+                                }else{
+                                    fileStructureHandler.deleteFilesFromDisk(uuid,alreadyExist.file.fileUUID).then(()=>{
+                                        fileStructureHandler.changeUsedBytes(-alreadyExist.file.fileSize,uuid).then(()=>{
+                                            executeMove();
 
-                            fileStructureHandler.removeFileStructureEntry(fileStructureHandler.parsePath(req.body.absoluteSourcePath.toString()),req.body.resourceName.toString(),uuid).then(result=>{
-                                fileStructureHandler.pushFileStructureEntry(fileStructureHandler.parsePath(req.body.absoluteTargetPath.toString()),result,uuid).then(()=>{
-                                    res.send();
-                                })
-                            })
+                                        });
+                                    })
+                                }
+                            }else{
+                                res.status(400).json({"error": "File already exist (use force to override)", "errorcode": "001"});
 
+                            }
                         }else{
-                            res.status(400).json({"error": "No valid paths", "errorcode": "001"});
+                            executeMove();
                         }
-                    })
+                    });
+
+                    function executeMove() {
+                        const sourceFileExistPromise =  fileStructureHandler.resourceExists(fileStructureHandler.parsePath(req.body.absoluteSourcePath.toString()),req.body.resourceName.toString(),uuid);
+                        const sourceExistPromise =  fileStructureHandler.folderStructureExists(fileStructureHandler.parsePath(req.body.absoluteSourcePath.toString()), uuid);
+                        const targetExistPromise = fileStructureHandler.folderStructureExists(fileStructureHandler.parsePath(req.body.absoluteTargetPath.toString()), uuid);
+
+                        Promise.all([sourceFileExistPromise,sourceExistPromise,targetExistPromise]).then(result=>{
+                            if(result[0].result===true&&result[1].result===true&&result[2].result===true){
+
+                                fileStructureHandler.removeFileStructureEntry(fileStructureHandler.parsePath(req.body.absoluteSourcePath.toString()),req.body.resourceName.toString(),uuid).then(result=>{
+                                    fileStructureHandler.pushFileStructureEntry(fileStructureHandler.parsePath(req.body.absoluteTargetPath.toString()),result,uuid).then(()=>{
+                                        res.send();
+                                    })
+                                })
+
+                            }else{
+                                res.status(400).json({"error": "No valid paths", "errorcode": "001"});
+                            }
+                        })
+
+                    }
+
 
 
 
                 }
 
             })
+        }else{
+            res.status(400).json({"error": "Please provide required attributes", "errorcode": "001"});
+
+        }
+
+    })
+
+
+
+    app.patch("/api/v1/usercontent/cloud/copyResource", (req, res) => {
+        if (req.body.absoluteSourcePath != null&&req.body.resourceName != null&&req.body.absoluteTargetPath!=null&&req.body.newResourceName!=null) {
+            // e.g. /photos/media/2020/05/02/
+            if(!fileStructureHandler.checkFileName(req.body.resourceName.toString())) {
+                res.status(400).json({"error": "No valid name", "errorcode": "001"});
+                return;
+            }
+            if(!fileStructureHandler.checkFileName(req.body.newResourceName.toString())) {
+                res.status(400).json({"error": "No valid name", "errorcode": "001"});
+                return;
+            }
+            const regex = /\/[a-zA-Z0-9_\/-]*[^\/]$/;
+            if (!regex.test(req.body.absoluteSourcePath.toString())&&!(req.body.absoluteSourcePath.toString()==="/")) {
+                res.status(400).json({"error": "No valid source path", "errorcode": "001"});
+                return;
+            }
+
+            if (!regex.test(req.body.absoluteTargetPath.toString())&&!(req.body.absoluteTargetPath.toString()==="/")) {
+                res.status(400).json({"error": "No valid target path", "errorcode": "001"});
+                return;
+            }
+
+            session.transformSecurelySessionToUserUUID(res, req).then(uuid => {
+
+                if (uuid != null) {
+                    //TODO build methode of this
+                    fileStructureHandler.resourceExists(fileStructureHandler.parsePath(req.body.absoluteTargetPath.toString()),req.body.newResourceName.toString(),uuid).then(alreadyExist=>{
+                        if(alreadyExist.result===true) {
+                            if(req.body.force) {
+                                if(alreadyExist.file.isFolder===true) {
+                                    fileStructureHandler.deleteRecursive(alreadyExist.file, uuid).then(savedBytes=>{
+                                        fileStructureHandler.changeUsedBytes(-savedBytes,uuid).then(()=>{
+                                            executeCopy();
+                                        });
+                                    })
+                                }else{
+                                    fileStructureHandler.deleteFilesFromDisk(uuid,alreadyExist.file.fileUUID).then(()=>{
+                                        fileStructureHandler.changeUsedBytes(-alreadyExist.file.fileSize,uuid).then(()=>{
+                                            executeCopy();
+
+                                        });
+                                    })
+                                }
+                            }else{
+                                res.status(400).json({"error": "File already exist (use force to override)", "errorcode": "001"});
+
+                            }
+
+                        }else{
+                            executeCopy();
+                        }
+                    });
+
+                    function executeCopy() {
+                        const sourceFileExistPromise =  fileStructureHandler.resourceExists(fileStructureHandler.parsePath(req.body.absoluteSourcePath.toString()),req.body.resourceName.toString(),uuid);
+                        const sourceExistPromise =  fileStructureHandler.folderStructureExists(fileStructureHandler.parsePath(req.body.absoluteSourcePath.toString()), uuid);
+                        const targetExistPromise = fileStructureHandler.folderStructureExists(fileStructureHandler.parsePath(req.body.absoluteTargetPath.toString()), uuid);
+
+                        Promise.all([sourceFileExistPromise,sourceExistPromise,targetExistPromise]).then(result=>{
+                            if(result[0].result===true&&result[1].result===true&&result[2].result===true){
+
+                                fileStructureHandler.copyRecursive({files:[ result[0].file]},uuid).then(newFileStruct=>{
+                                    newFileStruct.struct.files[0].name = req.body.newResourceName.toString();
+                                    fileStructureHandler.pushFileStructureEntry(fileStructureHandler.parsePath(req.body.absoluteTargetPath.toString()),newFileStruct.struct.files[0],uuid).then(()=>{
+                                        fileStructureHandler.changeUsedBytes(newFileStruct.usedBytes,uuid).then(()=>{
+                                            res.send();
+                                        })
+                                    });
+
+                                })
+
+                            }else{
+                                res.status(400).json({"error": "No valid paths", "errorcode": "001"});
+                            }
+                        })
+                    }
+
+
+
+
+
+                }
+
+            })
+        }else{
+            res.status(400).json({"error": "Please provide required attributes", "errorcode": "001"});
+
         }
     })
 
