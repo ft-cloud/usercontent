@@ -22,6 +22,7 @@ const userContentHandler = require('./userContentHandler');
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 app.use(cookieParser())
+app.use(cors());
 
 app.use(fileUpload({
     createParentPath: true,
@@ -30,7 +31,6 @@ app.use(fileUpload({
 
 userContentHandler.init();
 
-app.use(cors());
 
 app.get("/api/v1/usercontent",(req, res) => {
     res.send(JSON.stringify({microService:"Usercontent"}))
