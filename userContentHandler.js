@@ -80,7 +80,7 @@ module.exports.init = function initHandler() {
             // e.g. /photos/media/2020/05/02/
 
 
-            const regex = /\/[a-zA-Z0-9_\/-]*[^\/]$/;
+            const regex = /[a-zA-Z0-9\\s_@-^!#$%&+={}\[\]]/;
             if (!regex.test(req.body.absolutePath.toString()) && !(req.body.absolutePath.toString() === "/")) {
 
                 res.status(400).json({"error": "No valid path", "errorcode": "001"});
@@ -144,7 +144,7 @@ module.exports.init = function initHandler() {
                 return;
             }
 
-            const regex = /\/[a-zA-Z0-9_\/-]*[^\/]$/;
+            const regex = /[a-zA-Z0-9\\s_@-^!#$%&+={}\[\]]/;
             if (!regex.test(req.body.absolutePath.toString()) && !(req.body.absolutePath.toString() === "/")) {
                 res.status(400).json({"error": "No valid path", "errorcode": "001"});
                 return;
@@ -191,7 +191,7 @@ module.exports.init = function initHandler() {
             // e.g. /photos/media/2020/05/02/
 
 
-            const regex = /\/[a-zA-Z0-9_\/-]*[^\/]$/;
+            const regex = /[a-zA-Z0-9\\s_@-^!#$%&+={}\[\]]/;
             if (!regex.test(req.query.absolutePath.toString()) && !(req.query.absolutePath.toString() === "/")) {
                 res.status(400).json({"error": "No valid path", "errorcode": "001"});
                 return;
@@ -228,9 +228,9 @@ module.exports.init = function initHandler() {
                 res.status(400).json({"error": "No valid name", "errorcode": "001"});
                 return;
             }
-            const regex = /\/[a-zA-Z0-9_\/-]*[^\/]$/;
+            const regex = /[a-zA-Z0-9\\s_@-^!#$%&+={}\[\]]/;
             if (!regex.test(req.body.absolutePath.toString()) && !(req.body.absolutePath.toString() === "/")) {
-                res.status(400).json({"error": "No valid path", "errorcode": "001"});
+               res.status(400).json({"error": "No valid path", "errorcode": "001"});
                 return;
             }
 
@@ -279,7 +279,7 @@ module.exports.init = function initHandler() {
                 return;
             }
 
-            const regex = /\/[a-zA-Z0-9_\/-]*[^\/]$/;
+            const regex = /[a-zA-Z0-9\\s_@-^!#$%&+={}\[\]]/;
             if (!regex.test(req.query.absolutePath.toString()) && !(req.query.absolutePath.toString() === "/")) {
                 res.status(400).json({"error": "No valid path", "errorcode": "001"});
                 return;
@@ -360,7 +360,7 @@ module.exports.init = function initHandler() {
             }
 
 
-            const regex = /\/[a-zA-Z0-9_\/-]*[^\/]$/;
+            const regex = /[a-zA-Z0-9\\s_@-^!#$%&+={}\[\]]/;
             if (!regex.test(req.body.absoluteSourcePath.toString()) && !(req.body.absoluteSourcePath.toString() === "/")) {
                 res.status(400).json({"error": "No valid source path", "errorcode": "001"});
                 return;
@@ -449,7 +449,7 @@ module.exports.init = function initHandler() {
                 res.status(400).json({"error": "No valid name", "errorcode": "001"});
                 return;
             }
-            const regex = /\/[a-zA-Z0-9_\/-]*[^\/]$/;
+            const regex = /[a-zA-Z0-9\\s_@-^!#$%&+={}\[\]]$/;
             if (!regex.test(req.body.absoluteSourcePath.toString()) && !(req.body.absoluteSourcePath.toString() === "/")) {
                 res.status(400).json({"error": "No valid source path", "errorcode": "001"});
                 return;
