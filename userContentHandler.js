@@ -74,7 +74,6 @@ module.exports.init = function initHandler() {
     })
 
 
-    //TODO copy files
     app.put("/api/v1/usercontent/cloud/resource", (req, res) => {
         if (req.body.absolutePath != null) {
             // e.g. /photos/media/2020/05/02/
@@ -98,31 +97,39 @@ module.exports.init = function initHandler() {
                         let file = req.files.file;
 
                         fileStructureHandler.folderStructureExists(fileStructureHandler.parsePath(req.body.absolutePath.toString()), uuid).then(() => {
-                            const fileUUID = uuidGen.v4();
+                            fileStructureHandler.resourceExists(fileStructureHandler.parsePath(req.body.absolutePath.toString()),file.name,uuid).then(result=>{
+                                if(result.result){
+                                    res.status(400).json({"error": "File already exists", "errorcode": "017"});
+                                }else{
+                                    const fileUUID = uuidGen.v4();
 
-                            fileStructureHandler.pushFileStructureEntry(fileStructureHandler.parsePath(req.body.absolutePath.toString()), {
-                                "isFolder": false,
-                                "mimeType": file.mimetype,
-                                "fileUUID": fileUUID,
-                                "fileSize": file.size,
-                                "name": file.name,
-                                "checksum": file.md5
-                            }, uuid).then(() => {
-                                file.mv(`/usercontentdata/cloud/${uuid}/${fileUUID}`)
-                                fileStructureHandler.changeUsedBytes(file.size, uuid);
+                                    fileStructureHandler.pushFileStructureEntry(fileStructureHandler.parsePath(req.body.absolutePath.toString()), {
+                                        "isFolder": false,
+                                        "mimeType": file.mimetype,
+                                        "fileUUID": fileUUID,
+                                        "fileSize": file.size,
+                                        "name": file.name,
+                                        "checksum": file.md5
+                                    }, uuid).then(() => {
+                                        file.mv(`/usercontentdata/cloud/${uuid}/${fileUUID}`)
+                                        fileStructureHandler.changeUsedBytes(file.size, uuid);
 
-                                res.json({
-                                    status: true,
-                                    message: 'File has been uploaded uploaded',
-                                    file: {
-                                        name: file.name,
-                                        mimetype: file.mimetype,
-                                        size: file.size
-                                    }
-                                });
+                                        res.json({
+                                            status: true,
+                                            message: 'File has been uploaded uploaded',
+                                            file: {
+                                                name: file.name,
+                                                mimetype: file.mimetype,
+                                                size: file.size
+                                            }
+                                        });
 
 
+                                    })
+                                }
                             })
+
+
 
                         })
 
