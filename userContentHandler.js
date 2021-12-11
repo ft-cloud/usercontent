@@ -231,6 +231,7 @@ module.exports.init = function initHandler() {
         if (req.body.absolutePath != null && req.body.folderName != null) {
             // e.g. /photos/media/2020/05/02/
 
+
             if (!fileStructureHandler.checkFileName(req.body.folderName.toString())) {
                 res.status(400).json({"error": "No valid name", "errorcode": "001"});
                 return;

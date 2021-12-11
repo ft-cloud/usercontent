@@ -48,10 +48,10 @@ const fileStructureHandler = {
 
     getFileStructureRoot: function (userUUID) {
         return new Promise((resolve) => {
-            const accountCollection = global.database.collection("account");
+            const fileCloudCollection = global.database.collection("filecloud");
 
-            accountCollection.findOne({uuid: userUUID}).then(result => {
-                if (result.fileCloud != null && result.fileCloud.files != null) {
+            fileCloudCollection.findOne({uuid: userUUID}).then(result => {
+                if (result!=null&&result.fileCloud != null && result.fileCloud.files != null) {
                     resolve(result.fileCloud);
                 } else {
                     resolve(undefined);
@@ -134,7 +134,7 @@ const fileStructureHandler = {
     pushFileStructureEntry(path, fileStructureEntry, userUUID) {
 
         return new Promise(resolve => {
-            const accountCollection = global.database.collection("account");
+            const fileCloudCollection = global.database.collection("filecloud");
             let depth = ""
             const filters = [];
             for(let i=0;i<path.length;i++) {
@@ -149,7 +149,7 @@ const fileStructureHandler = {
 
             console.log(object);
             console.log(filters);
-            accountCollection.updateOne({uuid:userUUID},{$push: object},{arrayFilters: filters}).then(()=>{
+            fileCloudCollection.updateOne({uuid:userUUID},{$push: object},{arrayFilters: filters}).then(()=>{
                 resolve();
             });
 
@@ -167,7 +167,7 @@ const fileStructureHandler = {
                 if(foundFolder.result===false) {
                     resolve({result:false})
                 }else{
-                    const accountCollection = global.database.collection("account");
+                    const fileCloudCollection = global.database.collection("filecloud");
                     let depth = ""
                     const filters = [];
                     for(let i=0;i<path.length;i++) {
@@ -186,7 +186,7 @@ const fileStructureHandler = {
                         deleteObject = {success:false}
                     }
 
-                    accountCollection.updateOne({uuid:userUUID},{$pull: object},{arrayFilters: filters}).then((result)=>{
+                    fileCloudCollection.updateOne({uuid:userUUID},{$pull: object},{arrayFilters: filters}).then((result)=>{
                         resolve(deleteObject);
                     });
                 }
@@ -202,8 +202,8 @@ const fileStructureHandler = {
     changeUsedBytes: function (delta,userUUID) {
         return new Promise(resolve => {
 
-            const accountCollection = global.database.collection("account");
-            accountCollection.updateOne({uuid:userUUID},{$inc:{"fileCloud.usedBytes": delta}}).then(()=>{
+            const fileCloudCollection = global.database.collection("filecloud");
+            fileCloudCollection.updateOne({uuid:userUUID},{$inc:{"fileCloud.usedBytes": delta}}).then(()=>{
                 resolve();
             })
 
