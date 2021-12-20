@@ -1,7 +1,7 @@
-const uuidGen = require('uuid');
-const fileStructureHandler = require("./fileStructureHandler");
+import {v4 as uuidV4} from "uuid";
 
-const fileViewLinkHandler = {
+
+export const fileViewLinkHandler = {
 
 
     generateViewLink(userUUID, fileUUID,file) {
@@ -48,4 +48,3 @@ const fileViewLinkHandler = {
 
 
 }
-module.exports = fileViewLinkHandler;

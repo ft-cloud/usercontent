@@ -1,11 +1,16 @@
-const app = require("./userContentServer").app;
-const fs = require('fs')
-const uuidGen = require('uuid');
+import {app} from "./userContentServer.js";
 
-const session = require('sessionlib/session.js')
-const fileStructureHandler = require("./fileStructureHandler");
-const fileViewLinkHandler = require("./fileViewLinkHandler");
-module.exports.init = function initHandler() {
+import fs from "fs";
+
+import {v4 as uuidV4} from "uuid";
+
+import {session} from "sessionlib/session.js";
+
+import {fileStructureHandler} from "./fileStructureHandler.js";
+
+import {fileViewLinkHandler} from "./fileViewLinkHandler.js";
+
+export function initHandler() {
 
     app.get("/api/v1/usercontent/profilePicture", (req, res) => {
         if (req.query.user != null) {

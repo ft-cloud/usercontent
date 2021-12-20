@@ -1,14 +1,21 @@
-const express = require('express');
-const app = express();
-const uuidGen = require('uuid');
-const fs = require('fs')
-const fileUpload = require('express-fileupload');
-module.exports.app = app;
-const cookieParser = require('cookie-parser')
+import express from "express";
 
+import {v4 as uuidV4} from "uuid";
 
-const cors = require('cors');
-const { MongoClient } = require("mongodb");
+import fileUpload from "express-fileupload";
+
+import cookieParser from "cookie-parser";
+
+import {initHandler} from "./userContentHandler.js";
+
+import fs from "fs";
+
+import cors from "cors";
+
+import {MongoClient} from "mongodb";
+
+export const app = express();
+
 const uri = `mongodb://root:${process.env.MYSQL_ROOT_PASSWORD}@mongo:27017/?authSource=admin&readPreference=primary&directConnection=true&ssl=false`
 const client = new MongoClient(uri);
 
@@ -16,9 +23,6 @@ client.connect().then(()=> {
     global.database = client.db("cloud");
 
 })
-
-const userContentHandler = require('./userContentHandler');
-
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 app.use(cookieParser())
@@ -29,7 +33,7 @@ app.use(fileUpload({
     limits: {fileSize: 1024*1024*50}
 }));
 
-userContentHandler.init();
+initHandler();
 
 
 app.get("/api/v1/usercontent",(req, res) => {

@@ -1,8 +1,10 @@
-const path = require("path");
-const fs = require('fs')
-const uuidGen = require('uuid');
+import path from "path";
 
-const fileStructureHandler = {
+import fs from "fs";
+
+import {v4 as uuidV4} from "uuid";
+
+export const fileStructureHandler = {
     folderStructureExists: function (path, userUUID) {
         return new Promise((resolve) => {
             this.getFileStructureRoot(userUUID).then(fileStructure => {
@@ -237,7 +239,7 @@ const fileStructureHandler = {
                 usedBytes+=result.usedBytes;
                 file = result.struct;
             } else {
-                const newUUID = uuidGen.v4();
+                const newUUID = uuidV4();
                 await this.copyFilesOnDisk(userUUID, file.fileUUID,newUUID)
                 file.fileUUID = newUUID;
                 usedBytes += file.fileSize
@@ -286,4 +288,3 @@ const fileStructureHandler = {
     }
 };
 
-module.exports = fileStructureHandler;
