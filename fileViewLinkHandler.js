@@ -6,7 +6,7 @@ export const fileViewLinkHandler = {
 
     generateViewLink(userUUID, fileUUID,file) {
         return new Promise(resolve => {
-            const uuidBuf = Buffer.from(uuidGen.v4(), 'utf-8')
+            const uuidBuf = Buffer.from(uuidV4(), 'utf-8')
             const uuid = uuidBuf.toString('base64');
             const viewLinkCollection = global.database.collection("viewLink");
 

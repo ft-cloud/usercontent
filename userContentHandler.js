@@ -106,7 +106,7 @@ export function initHandler() {
                                 if(result.result){
                                     res.status(400).json({"error": "File already exists", "errorcode": "017"});
                                 }else{
-                                    const fileUUID = uuidGen.v4();
+                                    const fileUUID = uuidV4();
 
                                     fileStructureHandler.pushFileStructureEntry(fileStructureHandler.parsePath(req.body.absolutePath.toString()), {
                                         "isFolder": false,
