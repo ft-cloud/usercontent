@@ -13,6 +13,7 @@ import fs from "fs";
 import cors from "cors";
 
 import {MongoClient} from "mongodb";
+import rateLimit from "express-rate-limit";
 
 export const app = express();
 
@@ -27,11 +28,14 @@ app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 app.use(cookieParser())
 app.use(cors());
+app.disable('x-powered-by');
 
 app.use(fileUpload({
     createParentPath: true,
     limits: {fileSize: 1024*1024*50}
 }));
+
+
 
 initHandler();
 
