@@ -13,7 +13,6 @@ import fs from "fs";
 import cors from "cors";
 
 import {MongoClient} from "mongodb";
-import rateLimit from "express-rate-limit";
 
 export const app = express();
 
